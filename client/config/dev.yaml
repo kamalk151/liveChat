@@ -1,0 +1,20 @@
+
+host: "localhost"
+port: 3000
+env: "development"
+downstream:
+  api:
+    testEndPoint: "/test"
+    test:
+      # The test endpoint for the API
+      upstreamUrl: "/test"
+      # The test URL for the API
+      url: "http://localhost:3000/test"
+      # The test method for the API
+      httpMethod: "GET"
+      # The test headers for the API
+      testHeaders:
+        Content-Type: "application/json"
+        Authorization: "Bearer token"
+      debug: true
+      timeout: 5000
