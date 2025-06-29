@@ -1,5 +1,5 @@
 "use client"
-import useCreateSocketConnection from "../socketHandler"
+import { useCreateSocketConnection } from "../socketHandler"
 
 interface RenderMessageProps {
   bottomRef: any

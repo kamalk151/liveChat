@@ -1,6 +1,6 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
-import useCreateSocketConnection from "../socketHandler"
+import { useCreateSocketConnection } from "../socketHandler"
 import { saveChatHistory, getChatHistory } from "../storageHandler"
 import { useHandleTypeing } from "../hooks"
 

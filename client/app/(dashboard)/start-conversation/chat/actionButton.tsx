@@ -1,6 +1,6 @@
 "use client"
 import React from "react"
-import useCreateSocketConnection from "../socketHandler"
+import { useCreateSocketConnection } from "../socketHandler"
 import { useHandleTypeing } from "../hooks"
 
 interface ActionButtonProps {

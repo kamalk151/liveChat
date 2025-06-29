@@ -1,6 +1,6 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
-import useCreateSocketConnection from "../socketHandler"
+import { useCreateSocketForVideo } from "../socketHandler"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -9,30 +9,33 @@ export default function VideoComponent() {
   const [targetId, setTargetId] = useState("")
   const [socketId, setSocketId] = useState("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  const { adapter, onlineUsers } = useCreateSocketConnection()
+  const { adapter, onlineUsers } = useCreateSocketForVideo()
 
   // Setup local media
   useEffect(() => {
+    console.log(adapter.connected, adapter.id)
     adapter.id && setSocketId(adapter.id)
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
     })
-  }, [onlineUsers])
+  }, [adapter.connected])
 
   // Handle signaling
   useEffect(() => {
     if (!adapter) return
     // This will create a new peer connection and set the remote description
+    // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }) => {
       const pc = createPeerConnection(from)
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
+      // Answer - The person receiving the call
       adapter.emit("answer", { to: from, answer })
     })
 
-    // Answer from remote
+    // Answer from remote/receiver
     // This acknowledges the offer and responds with an answer 
     // This will set the remote description on the existing peer connection
     adapter.on("answer", async ({ answer }) => {
@@ -41,6 +44,8 @@ export default function VideoComponent() {
 
     // ICE candidate from remote
     adapter.on("ice-candidate", async ({ candidate }) => {
+      // it's like an IP address and port) that helps two peers find
+      //  the best way to connect directly to each other
       if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate))
     })
 
@@ -110,7 +115,7 @@ export default function VideoComponent() {
           <span>{isCalling ? "Call in progress..." : "Ready to call"}</span>
         </div>
         <div className="mt-2 text-xs text-gray-400">
-          <span>Your Socket ID: {socketId}</span>
+          <span>Your Socket ID: { socketId }</span>
         </div>
       </div>
     </div>
