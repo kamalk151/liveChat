@@ -18,6 +18,7 @@ export default function Header() {
           <li><Link href="/product">Product</Link></li>
           <li><Link href="/login">Login</Link></li>
           <li><Link href="/start-conversation">Start Conversation</Link></li>
+          <li><Link href="/portfolio">Portfolio</Link></li>
         </ul>
       </nav>
       {/* <div className="search-bar">

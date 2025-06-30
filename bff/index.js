@@ -127,7 +127,7 @@ streamConversation.on('connection', socket => {
       .filter(([id]) => id !== socket.id)
     console.log('Sending list of connected clients', clients)
     socket.emit('userList', clients.filter(id => id !== socket.id))
-  });
+  })
  
   // Relay offer to the target user
   socket.on('offer', ({ to, offer }) => {
