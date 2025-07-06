@@ -19,7 +19,7 @@ export const useCreateSocketConnection = () => {
   const [chatStarted, setChatStarted] = useState<any>()
   const adapter = useMemo(() => {
     if (!socket) {
-      socket = io("http://localhost:3080/chat", {
+      socket = io("http://192.168.29.171:3080/chat", {
         // autoConnect: true,
       })
       console.log("Socket connection created")
