@@ -88,7 +88,10 @@ export default function VideoComponent() {
 
   // Create peer connection
   function createPeerConnection(remoteId: string) {
-    const pc = new RTCPeerConnection()
+    // Use a public STUN server for NAT traversal
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    })
     // Add local stream
     const localStream = localVideoRef.current?.srcObject as MediaStream
     localStream?.getTracks().forEach(track => pc.addTrack(track, localStream))

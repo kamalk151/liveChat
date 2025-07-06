@@ -11,7 +11,7 @@ export const useCreateSocketForVideo = () => {
 
   const adapter = useMemo(() => {
     if (!socket) {
-      socket = io("http://localhost:3080/video", {
+      socket = io("http://192.168.29.171:3080/video", {
         // autoConnect: true,
       })
       console.log("Socket connection created")
