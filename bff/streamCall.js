@@ -34,7 +34,7 @@ module.exports = (io) => {
       const clients = Array.from(videoUsers.entries())
         .filter(([id]) => id !== socket.id)
       console.log('Sending list of vedio connected clients', clients)
-      socket.emit('userList', clients.filter(id => id !== socket.id))
+      socket.emit('userList', clients)
     })
   
     // Relay offer to the target user

@@ -35,13 +35,9 @@ export default function VideoComponent() {
     const strangeUserId = connectToStrange()
     if (!strangeUserId) return
     console.log('updated idleUsers')
-    if (strangeId !== strangeUserId) {
-      // If there was a previous stranger, release both users
-      strangeId && adapter.emit('release_users', { to: strangeId })
-      setStrangeId(strangeUserId)
-    }
-
+    setStrangeId(strangeUserId)
     const startCall = async () => {
+      console.log("Starting call with user:", strangeUserId)
       adapter.emit("start_conversation", { to: strangeUserId })
       const pc = createPeerConnection(strangeUserId)
       setPeer(pc)
@@ -59,6 +55,7 @@ export default function VideoComponent() {
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
+      console.log("Received offer from:", from)
       const pc = createPeerConnection(from)
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
