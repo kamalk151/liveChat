@@ -7,6 +7,7 @@ let socket: Socket | null = null
 export const useCreateSocketForVideo = () => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const [idleUsers, setIdleUsers] = useState<string[]>([])
+  const [isCalling, setIsCalling] = useState(false)
   const [startCall, setStartCall] = useState<boolean>(false)
 
   const adapter = useMemo(() => {
@@ -60,5 +61,14 @@ export const useCreateSocketForVideo = () => {
     console.log("Requesting all online users")
   }
 
-  return { adapter, startCall, setStartCall, idleUsers, getAllIdleUsers, onlineUsers }
+  return { 
+    adapter,
+    isCalling,
+    setIsCalling,
+    startCall,
+    setStartCall,
+    idleUsers,
+    getAllIdleUsers,
+    onlineUsers
+  }
 }

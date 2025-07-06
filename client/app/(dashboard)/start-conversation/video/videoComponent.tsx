@@ -10,7 +10,7 @@ export default function VideoComponent() {
   const [strangeId, setStrangeId] = useState("")
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  const { adapter, startCall, onlineUsers, idleUsers } = useCreateSocketForVideo()
+  const { adapter, setIsCalling, setStartCall, onlineUsers, idleUsers } = useCreateSocketForVideo()
 
   // connect to a random stranger
   const connectToStrange = () => {
@@ -36,7 +36,7 @@ export default function VideoComponent() {
     if (!strangeUserId) return
     console.log('updated idleUsers', strangeUserId)
     setStrangeId(strangeUserId)
-    const startCall = async () => {
+    const startConversation = async () => {
       console.log("Starting call with user:", strangeUserId)
       adapter.emit("start_conversation", { to: strangeUserId })
       const pc = createPeerConnection(strangeUserId)
@@ -46,7 +46,7 @@ export default function VideoComponent() {
       adapter.emit("offer", { to: strangeUserId, offer })
     }
     
-    startCall()
+    startConversation()
   }, [idleUsers])
   
   // Handle signaling
@@ -55,14 +55,20 @@ export default function VideoComponent() {
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
-      console.log("Received offer from:", from)
+      // console.log("Received offer from:", from)
       const pc = createPeerConnection(from)
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
       // Answer - The person receiving the call
-      setStrangeId(from)
+      if(strangeId !== from) {
+        console.log("Setting strangeId to:", from)
+        setStrangeId(from)
+        setIsCalling(true)
+        setStartCall(true)
+      }
+
       console.log("Sending answer to:", from)
       adapter.emit("answer", { to: from, answer })
     })

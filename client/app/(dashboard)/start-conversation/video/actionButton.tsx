@@ -1,5 +1,5 @@
 
-import React from "react"
+import React, { useEffect } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
 
 interface ActionButtonProps {
@@ -13,8 +13,15 @@ export default function ActionButton({
   targetId,
   socketId
 }: ActionButtonProps) {
-  const [isCalling, setIsCalling] = React.useState(false)
-  const { getAllIdleUsers, setStartCall, startCall, adapter } = useCreateSocketForVideo()
+  
+  const {
+    getAllIdleUsers,
+    setStartCall,
+    setIsCalling,
+    isCalling,
+    startCall,
+    adapter
+  } = useCreateSocketForVideo()
   console.log("ActionButton rendered----start", startCall)
 
   const handleStartCall = () => {
