@@ -10,6 +10,7 @@ export default function VideoComponent() {
   const [strangeId, setStrangeId] = useState("")
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const {
     adapter,
     setIsCalling,
@@ -32,6 +33,7 @@ export default function VideoComponent() {
     if( adapter.id ) {
       setSocketId(adapter.id)
       navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        setLocalStream(stream)
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
       })
     }
@@ -91,6 +93,7 @@ export default function VideoComponent() {
     adapter.on("ice-candidate", async ({ candidate }: { candidate: any}) => {
       // it's like an IP address and port) that helps two peers find
       // the best way to connect directly to each other
+      console.log("Received ICE candidate:", candidate)
       if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate))
     })
 
@@ -109,8 +112,12 @@ export default function VideoComponent() {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
     // Add local stream
-    const localStream = localVideoRef.current?.srcObject as MediaStream
-    localStream?.getTracks().forEach(track => pc.addTrack(track, localStream))
+    // const localStream = localVideoRef.current?.srcObject as MediaStream
+    console.log(remoteId, "Creating peer connection for:", localStream)
+    if (localStream) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+    // localStream?.getTracks().forEach(track => pc.addTrack(track, localStream))
     // Remote stream
     pc.ontrack = e => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0]
