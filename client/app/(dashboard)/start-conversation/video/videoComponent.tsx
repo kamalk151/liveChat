@@ -34,7 +34,7 @@ export default function VideoComponent() {
     // to start conversation
     const strangeUserId = connectToStrange()
     if (!strangeUserId) return
-    console.log('updated idleUsers')
+    console.log('updated idleUsers', strangeUserId)
     setStrangeId(strangeUserId)
     const startCall = async () => {
       console.log("Starting call with user:", strangeUserId)
@@ -62,6 +62,8 @@ export default function VideoComponent() {
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
       // Answer - The person receiving the call
+      setStrangeId(from)
+      console.log("Sending answer to:", from)
       adapter.emit("answer", { to: from, answer })
     })
 
