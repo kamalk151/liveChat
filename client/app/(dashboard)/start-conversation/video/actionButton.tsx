@@ -25,6 +25,7 @@ export default function ActionButton({
   const handleEndCall = () => {
     setIsCalling(false)
     setStartCall(false)
+    setTargetId('')
     adapter.emit('release_users', { to: targetId })
     // Add your end call logic here
   }

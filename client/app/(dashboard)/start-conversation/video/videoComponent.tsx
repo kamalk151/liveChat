@@ -111,29 +111,6 @@ export default function VideoComponent() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gradient-to-br from-blue-100 to-indigo-200">
       <h1 className="text-3xl font-bold mb-6 text-indigo-800">Live Video Conversation</h1>
-      {/* <div className="w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
-        <div className="flex gap-6 mb-6 w-full justify-center">
-          <video ref={localVideoRef} autoPlay playsInline muted className="w-48 h-32 bg-gray-300 rounded-lg border-2 border-indigo-400" />
-          <video ref={remoteVideoRef} autoPlay playsInline className="w-48 h-32 bg-gray-200 rounded-lg border-2 border-green-400" />
-        </div>
-          { onlineUsers.length > 0 && (
-            <div className="text-sm text-gray-600">
-              <span> Online Users: </span>
-              <span className="font-semibold"> { onlineUsers.length } </span>
-            </div>)
-          }
-          <div className="text-sm text-gray-600">
-            <span>Idle Users: </span>
-            <span className="font-semibold">{ idleUsers.length }</span>
-          </div>
-        <div className="flex gap-4 mt-4">
-          <ActionButton
-            setTargetId={setStrangeId}
-            targetId={strangeId}
-            socketId={socketId}
-          />
-        </div>
-      </div> */}
       <div className="relative w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
         {/* Remote (other user) video - big */}
         <div className="w-full aspect-video bg-gray-200 rounded-lg border-2 border-green-400 flex items-center justify-center overflow-hidden">
