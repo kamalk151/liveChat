@@ -1,7 +1,7 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./actionButton"
+import ActionButton from "./ActionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -10,7 +10,15 @@ export default function VideoComponent() {
   const [strangeId, setStrangeId] = useState("")
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  const { adapter, setIsCalling, setStartCall, onlineUsers, idleUsers } = useCreateSocketForVideo()
+  const {
+    adapter,
+    setIsCalling,
+    setStartCall,
+    onlineUsers,
+    idleUsers,
+    isCalling,
+    startCall,
+  } = useCreateSocketForVideo()
 
   // connect to a random stranger
   const connectToStrange = () => {
@@ -166,6 +174,10 @@ export default function VideoComponent() {
             setTargetId={setStrangeId}
             targetId={strangeId}
             socketId={socketId}
+            isCalling={isCalling}
+            setIsCalling={setIsCalling}
+            startCall={startCall}
+            setStartCall={setStartCall}
           />
         </div>
       </div>

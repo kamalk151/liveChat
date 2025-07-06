@@ -6,20 +6,24 @@ interface ActionButtonProps {
   setTargetId: (targetId: string) => void,
   targetId: string,
   socketId: string
+  setStartCall: (startCall: boolean) => void
+  setIsCalling: (isCalling: boolean) => void
+  isCalling: boolean
+  startCall: boolean
 }
 
 export default function ActionButton({
   setTargetId,
   targetId,
-  socketId
+  socketId,
+  setStartCall,
+  setIsCalling,
+  isCalling,
+  startCall
 }: ActionButtonProps) {
   
   const {
     getAllIdleUsers,
-    setStartCall,
-    setIsCalling,
-    isCalling,
-    startCall,
     adapter
   } = useCreateSocketForVideo()
   console.log("ActionButton rendered----start", startCall)
@@ -39,10 +43,10 @@ export default function ActionButton({
 
   return (
     <div className="max-w-2xl mx-auto mt-8 min-w-6 items-center gap-2">
-      {!isCalling ? (
+      { !isCalling ? (
         <button
           className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-semibold shadow transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleStartCall}
+          onClick={ handleStartCall }
         >
           Start Video
         </button>
@@ -50,15 +54,15 @@ export default function ActionButton({
         <div className="flex gap-4 justify-center">
           <button
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-semibold shadow transition"
-            onClick={handleEndCall}
+            onClick={ handleEndCall }
           >
             End Call
           </button>
         </div>
-      )}
+      ) }
       <div className="flex mt-6 justify-between items-center">
         <div className="mx-2 text-gray-500 text-sm">
-          <span>{ isCalling && "Call in progress..." }</span>
+          <span> { isCalling && "Call in progress..." } </span>
         </div>
         <div className="mx-2 text-xs text-gray-400">
           <span> Your Socket ID: { socketId } </span>

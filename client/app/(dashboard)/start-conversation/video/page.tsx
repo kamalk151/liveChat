@@ -1,5 +1,5 @@
 
-import VideoComponent from "./videoComponent"
+import VideoComponent from "./VideoComponent"
 
 export const metadata = {
   title: "Digital Store - Video Conversation"
