@@ -1,31 +1,64 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
-import { useCreateSocketForVideo } from "../socketHandler"
+import { useCreateSocketForVideo } from "./socketHandler"
+import ActionButton from "./actionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
-  const [isCalling, setIsCalling] = useState(false)
-  const [targetId, setTargetId] = useState("")
-  const [socketId, setSocketId] = useState("")
+  // const [isCalling, setIsCalling] = useState(false)
+  const [strangeId, setStrangeId] = useState("")
+  const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  const { adapter, onlineUsers } = useCreateSocketForVideo()
+  const { adapter, startCall, onlineUsers, idleUsers } = useCreateSocketForVideo()
+
+  // connect to a random stranger
+  const connectToStrange = () => {
+    if (!idleUsers.length) return ''
+    const randomIndex = Math.floor(Math.random() * idleUsers.length)
+    return idleUsers[randomIndex]
+  }
 
   // Setup local media
   useEffect(() => {
-    console.log(adapter.connected, adapter.id)
-    adapter.id && setSocketId(adapter.id)
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream
-    })
+    if( adapter.id ) {
+      setSocketId(adapter.id)
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream
+      })
+    }
   }, [adapter.connected])
 
+  useEffect(() => {
+    // adapter.emit('allDisconnect')
+    // to start conversation
+    const strangeUserId = connectToStrange()
+    if (!strangeUserId) return
+    console.log('updated idleUsers')
+    if (strangeId !== strangeUserId) {
+      // If there was a previous stranger, release both users
+      strangeId && adapter.emit('release_users', { to: strangeId })
+      setStrangeId(strangeUserId)
+    }
+
+    const startCall = async () => {
+      adapter.emit("start_conversation", { to: strangeUserId })
+      const pc = createPeerConnection(strangeUserId)
+      setPeer(pc)
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      adapter.emit("offer", { to: strangeUserId, offer })
+    }
+    
+    startCall()
+  }, [idleUsers])
+  
   // Handle signaling
   useEffect(() => {
     if (!adapter) return
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
-    adapter.on("offer", async ({ from, offer }) => {
+    adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
       const pc = createPeerConnection(from)
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
@@ -35,17 +68,16 @@ export default function VideoComponent() {
       adapter.emit("answer", { to: from, answer })
     })
 
-    // Answer from remote/receiver
     // This acknowledges the offer and responds with an answer 
     // This will set the remote description on the existing peer connection
-    adapter.on("answer", async ({ answer }) => {
+    adapter.on("answer", async ({ answer }: { answer: any}) => {
       if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer))
     })
 
     // ICE candidate from remote
-    adapter.on("ice-candidate", async ({ candidate }) => {
+    adapter.on("ice-candidate", async ({ candidate }: { candidate: any}) => {
       // it's like an IP address and port) that helps two peers find
-      //  the best way to connect directly to each other
+      // the best way to connect directly to each other
       if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate))
     })
 
@@ -76,46 +108,80 @@ export default function VideoComponent() {
     return pc
   }
 
-  // Start call
-  const startCall = async () => {
-    if (!targetId) return
-    const pc = createPeerConnection(targetId)
-    setPeer(pc)
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
-    adapter.emit("offer", { to: targetId, offer })
-    setIsCalling(true)
-  }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gradient-to-br from-blue-100 to-indigo-200">
       <h1 className="text-3xl font-bold mb-6 text-indigo-800">Live Video Conversation</h1>
-      <div className="w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
+      {/* <div className="w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
         <div className="flex gap-6 mb-6 w-full justify-center">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-48 h-32 bg-gray-300 rounded-lg border-2 border-indigo-400" />
           <video ref={remoteVideoRef} autoPlay playsInline className="w-48 h-32 bg-gray-200 rounded-lg border-2 border-green-400" />
         </div>
+          { onlineUsers.length > 0 && (
+            <div className="text-sm text-gray-600">
+              <span> Online Users: </span>
+              <span className="font-semibold"> { onlineUsers.length } </span>
+            </div>)
+          }
+          <div className="text-sm text-gray-600">
+            <span>Idle Users: </span>
+            <span className="font-semibold">{ idleUsers.length }</span>
+          </div>
         <div className="flex gap-4 mt-4">
-          <input
-            type="text"
-            placeholder="Target Socket ID"
-            value={targetId}
-            onChange={e => setTargetId(e.target.value)}
-            className="border px-2 py-1 rounded"
+          <ActionButton
+            setTargetId={setStrangeId}
+            targetId={strangeId}
+            socketId={socketId}
           />
-          <button
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-semibold shadow transition"
-            onClick={startCall}
-            disabled={!targetId}
+        </div>
+      </div> */}
+      <div className="relative w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
+        {/* Remote (other user) video - big */}
+        <div className="w-full aspect-video bg-gray-200 rounded-lg border-2 border-green-400 flex items-center justify-center overflow-hidden">
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+            style={{ background: "#e5e7eb" }}
+          />
+          {/* My (local) video - small, draggable */}
+          <div
+            className="absolute top-4 right-4 cursor-move shadow-lg rounded-lg border-2 border-indigo-400 bg-gray-300"
+            style={{
+              width: "120px",
+              height: "90px",
+              zIndex: 10,
+              overflow: "hidden",
+              resize: "both"
+            }}
+            id="local-video-draggable"
           >
-            Start Video
-          </button>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover rounded-lg"
+            />
+          </div>
         </div>
-        <div className="mt-6 text-gray-500 text-sm">
-          <span>{isCalling ? "Call in progress..." : "Ready to call"}</span>
+        {/* User stats and controls */}
+        {onlineUsers.length > 0 && (
+          <div className="text-sm text-gray-600 mt-4">
+            <span> Online Users: </span>
+            <span className="font-semibold"> {onlineUsers.length} </span>
+          </div>
+        )}
+        <div className="text-sm text-gray-600">
+          <span>Idle Users: </span>
+          <span className="font-semibold">{idleUsers.length}</span>
         </div>
-        <div className="mt-2 text-xs text-gray-400">
-          <span>Your Socket ID: { socketId }</span>
+        <div className="flex gap-4 mt-4">
+          <ActionButton
+            setTargetId={setStrangeId}
+            targetId={strangeId}
+            socketId={socketId}
+          />
         </div>
       </div>
     </div>
