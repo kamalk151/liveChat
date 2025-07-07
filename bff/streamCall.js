@@ -15,9 +15,13 @@ module.exports = (io) => {
       socket.emit('conversation_started')
     })
 
-    socket.on('release_users', ({ to }) => {
+    socket.on('release_users', ({ to, type }) => {
       videoUsers.set(to, 'idle')
       socket.emit('get_idle_users')
+      if (type === 'endCall') {
+        console.log('Ending call for', to)
+        streamConversation.to(to).emit('handle_end_call')
+      }
       // Optionally notify the other user
     })
 
@@ -39,7 +43,6 @@ module.exports = (io) => {
   
     // Relay offer to the target user
     socket.on('offer', ({ to, offer }) => {
-      // console.log('===offer-to', to, '===pffer--', offer)
       streamConversation.to(to).emit('offer', { from: socket.id, offer })
     })
 

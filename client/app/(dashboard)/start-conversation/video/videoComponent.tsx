@@ -6,7 +6,6 @@ import ActionButton from "./ActionButton"
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
-  // const [isCalling, setIsCalling] = useState(false)
   const [strangeId, setStrangeId] = useState("")
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
@@ -18,7 +17,7 @@ export default function VideoComponent() {
     onlineUsers,
     idleUsers,
     isCalling,
-    startCall,
+    startCall
   } = useCreateSocketForVideo()
 
   // connect to a random stranger

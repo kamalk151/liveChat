@@ -33,6 +33,12 @@ export const useCreateSocketForVideo = () => {
     setIdleUsers(data || [])
   }
 
+  const handleEndCall = () => {
+    setIsCalling(false) // Reset the call state
+    setStartCall(false) // Reset the start call state
+    console.log("Call ended, states reset")
+  }
+
   useEffect(() => {
     // Connect to the socket server
     adapter.connect()
@@ -43,6 +49,7 @@ export const useCreateSocketForVideo = () => {
     console.log('test')
     adapter.on('idleUserList', handleIdleUsers)
     adapter.on("userList", handleOnlineUsers)
+    adapter.on("handle_end_call", handleEndCall)
     console.log("------------------------********-----------------")
     // Cleanup on unmount
     return () => {

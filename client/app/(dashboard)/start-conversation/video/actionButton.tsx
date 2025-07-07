@@ -34,10 +34,11 @@ export default function ActionButton({
   }
 
   const handleEndCall = () => {
-    adapter.emit('release_users', { to: targetId })
+    adapter.emit('release_users', { to: targetId, type: 'endCall' })
     setIsCalling(false)
     setStartCall(false)
     setTargetId('')
+    // adapter.emit('handle_end_call_users', { to: targetId })
     // Add your end call logic here
   }
 
