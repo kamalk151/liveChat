@@ -40,8 +40,7 @@ export default function VideoComponent() {
   }, [adapter.connected])
 
   useEffect(() => {
-    // adapter.emit('allDisconnect')
-    // to start conversation
+    // adapter.emit('allDisconnect') // to start conversation
     const strangeUserId = connectToStrange()
     if (!strangeUserId) return
     console.log('updated idleUsers', strangeUserId)
@@ -75,7 +74,6 @@ export default function VideoComponent() {
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
-      // console.log("Received offer from:", from)
       const pc = createPeerConnection(from)
       if (!pc) {
         console.error("Failed to create peer connection")
@@ -119,6 +117,7 @@ export default function VideoComponent() {
     // eslint-disable-next-line
   }, [adapter, peer])
   console.log(localStream, "Creating peer connection for:")
+
   // Create peer connection
   function createPeerConnection(remoteId: string) {
     const stream = localVideoRef.current
@@ -131,12 +130,9 @@ export default function VideoComponent() {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
     // Add local stream
-    // const localStream = localVideoRef.current?.srcObject as MediaStream
+    const localStream = localVideoRef.current?.srcObject as MediaStream
     console.log(remoteId, "Creating peer connection for:", localStream)
-    if (localStream) {
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    }
-    // localStream?.getTracks().forEach(track => pc.addTrack(track, localStream))
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream))
     // Remote stream
     pc.ontrack = e => {
       console.log("ontrack fired", e.streams)
