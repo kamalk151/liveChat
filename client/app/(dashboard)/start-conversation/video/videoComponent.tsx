@@ -106,6 +106,10 @@ export default function VideoComponent() {
 
   // Create peer connection
   function createPeerConnection(remoteId: string) {
+    if (!localStream) {
+      console.error("Local stream is not available")
+      return null
+    }
     // Use a public STUN server for NAT traversal
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -119,6 +123,7 @@ export default function VideoComponent() {
     // localStream?.getTracks().forEach(track => pc.addTrack(track, localStream))
     // Remote stream
     pc.ontrack = e => {
+      console.log("ontrack fired", e.streams)
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0]
     }
     // ICE candidates
