@@ -1,7 +1,7 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./ActionButton"
+import ActionButton from "./actionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -49,6 +49,10 @@ export default function VideoComponent() {
       console.log("Starting call with user:", strangeUserId)
       adapter.emit("start_conversation", { to: strangeUserId })
       const pc = createPeerConnection(strangeUserId)
+      if (!pc) {
+        console.error("Failed to create peer connection")
+        return
+      }
       setPeer(pc)
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -66,6 +70,10 @@ export default function VideoComponent() {
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
       // console.log("Received offer from:", from)
       const pc = createPeerConnection(from)
+      if (!pc) {
+        console.error("Failed to create peer connection")
+        return
+      }
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await pc.createAnswer()
