@@ -33,6 +33,7 @@ export default function VideoComponent() {
       setSocketId(adapter.id)
       navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
         setLocalStream(stream)
+        console.log("Local stream set", stream)
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
       })
     }
@@ -62,6 +63,12 @@ export default function VideoComponent() {
     startConversation()
   }, [idleUsers])
   
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream
+    }
+  }, [localStream])
+
   // Handle signaling
   useEffect(() => {
     if (!adapter) return
@@ -111,10 +118,11 @@ export default function VideoComponent() {
     }
     // eslint-disable-next-line
   }, [adapter, peer])
-
+  console.log(localStream, "Creating peer connection for:")
   // Create peer connection
   function createPeerConnection(remoteId: string) {
-    if (!localStream) {
+    const stream = localVideoRef.current
+    if (!stream) {
       console.error("Local stream is not available")
       return null
     }
