@@ -1,7 +1,7 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./actionButton"
+import ActionButton from "./ActionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
