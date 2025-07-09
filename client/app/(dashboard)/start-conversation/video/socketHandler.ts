@@ -9,6 +9,7 @@ export const useCreateSocketForVideo = () => {
   const [idleUsers, setIdleUsers] = useState<string[]>([])
   const [isCalling, setIsCalling] = useState(false)
   const [startCall, setStartCall] = useState<boolean>(false)
+  const [strangeId, setStrangeId] = useState<string>('')
 
   const adapter = useMemo(() => {
     if (!socket) {
@@ -36,6 +37,7 @@ export const useCreateSocketForVideo = () => {
   const handleEndCall = () => {
     setIsCalling(false) // Reset the call state
     setStartCall(false) // Reset the start call state
+    setStrangeId("") // Reset the strange user ID
     console.log("Call ended, states reset")
   }
 
@@ -68,7 +70,9 @@ export const useCreateSocketForVideo = () => {
     console.log("Requesting all online users")
   }
 
-  return { 
+  return {
+    strangeId,
+    setStrangeId,
     adapter,
     isCalling,
     setIsCalling,

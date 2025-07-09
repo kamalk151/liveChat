@@ -5,12 +5,14 @@ import ActionButton from "./ActionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
-  const [strangeId, setStrangeId] = useState("")
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  
   const {
+    strangeId,
+    setStrangeId,
     adapter,
     setIsCalling,
     setStartCall,
@@ -32,7 +34,7 @@ export default function VideoComponent() {
     if( adapter.id ) {
       setSocketId(adapter.id)
       navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-        setLocalStream(stream)
+        localStreamRef.current = stream
         console.log("Local stream set", stream)
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
       })
@@ -45,6 +47,7 @@ export default function VideoComponent() {
     if (!strangeUserId) return
     console.log('updated idleUsers', strangeUserId)
     setStrangeId(strangeUserId)
+
     const startConversation = async () => {
       console.log("Starting call with user:", strangeUserId)
       adapter.emit("start_conversation", { to: strangeUserId })
@@ -61,12 +64,6 @@ export default function VideoComponent() {
     
     startConversation()
   }, [idleUsers])
-  
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream
-    }
-  }, [localStream])
 
   // Handle signaling
   useEffect(() => {
@@ -90,7 +87,6 @@ export default function VideoComponent() {
         setIsCalling(true)
         setStartCall(true)
       }
-
       console.log("Sending answer to:", from)
       adapter.emit("answer", { to: from, answer })
     })
@@ -115,24 +111,25 @@ export default function VideoComponent() {
       adapter.off("ice-candidate")
     }
     // eslint-disable-next-line
-  }, [adapter, peer])
-  console.log(localStream, "Creating peer connection for:")
+  }, [adapter, peer, localStreamRef])
+  console.log(localStreamRef, "Creating peer connection for:", localStreamRef.current)
 
   // Create peer connection
   function createPeerConnection(remoteId: string) {
-    const stream = localVideoRef.current
-    if (!stream) {
+    // const stream = localVideoRef.current
+    if (!localStreamRef.current) {
       console.error("Local stream is not available")
       return null
     }
+    // Add local stream
+    // const localStream = localVideoRef.current?.srcObject as MediaStream
     // Use a public STUN server for NAT traversal
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
-    // Add local stream
-    const localStream = localVideoRef.current?.srcObject as MediaStream
-    console.log(remoteId, "Creating peer connection for:", localStream)
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream))
+    
+    console.log(remoteId, "Creating peer connection for:", localStreamRef)
+    localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current!))
     // Remote stream
     pc.ontrack = e => {
       console.log("ontrack fired", e.streams)
@@ -182,12 +179,12 @@ export default function VideoComponent() {
           </div>
         </div>
         {/* User stats and controls */}
-        {onlineUsers.length > 0 && (
+        { onlineUsers.length > 0 && (
           <div className="text-sm text-gray-600 mt-4">
             <span> Online Users: </span>
             <span className="font-semibold"> {onlineUsers.length} </span>
           </div>
-        )}
+        ) }
         <div className="text-sm text-gray-600">
           <span>Idle Users: </span>
           <span className="font-semibold">{idleUsers.length}</span>

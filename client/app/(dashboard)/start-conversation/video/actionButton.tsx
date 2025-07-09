@@ -26,7 +26,7 @@ export default function ActionButton({
     getAllIdleUsers,
     adapter
   } = useCreateSocketForVideo()
-  console.log("ActionButton rendered----start", startCall)
+
 
   const handleStartCall = () => {
     setIsCalling(true)
