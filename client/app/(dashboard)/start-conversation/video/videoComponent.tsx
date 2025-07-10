@@ -136,7 +136,10 @@ export default function VideoComponent() {
     })
 
     console.log(remoteId, "Creating peer connection for:", localStreamRef)
-    stream.getTracks().forEach(track => pc.addTrack(track, stream))
+    stream.getTracks().forEach(track =>{
+      console.log("Adding track to peer connection:", track)
+      return pc.addTrack(track, stream)
+    })
     // Remote stream
     pc.ontrack = e => {
       if (remoteVideoRef.current) {
