@@ -1,7 +1,7 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./actionButton"
+import ActionButton from "./ActionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -101,15 +101,18 @@ export default function VideoComponent() {
 
     // This acknowledges the offer and responds with an answer 
     // This will set the remote description on the existing peer connection
-    adapter.on("answer", async ({ answer }: { answer: any}) => {
-      if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer))
+    adapter.on("answer", async ({ answer }: { answer: any}) => {      
+      if (peer) {
+        console.log(peer, "Received answer:", answer)
+        await peer.setRemoteDescription(new RTCSessionDescription(answer))
+      } 
     })
 
     // ICE candidate from remote
     adapter.on("ice-candidate", async ({ candidate }: { candidate: any}) => {
       // it's like an IP address and port) that helps two peers find
       // the best way to connect directly to each other
-      console.log("Received ICE candidate:", candidate)
+      console.log(peer, "Received ICE candidate:", candidate)
       if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate))
     })
 
@@ -143,6 +146,7 @@ export default function VideoComponent() {
     // Remote stream
     pc.ontrack = e => {
       if (remoteVideoRef.current) {
+        console.warn("Remote video stream", e.streams[0])
         remoteVideoRef.current.srcObject = e.streams[0]
       } else {
         console.warn("Remote video ref or stream is missing")
@@ -156,6 +160,8 @@ export default function VideoComponent() {
     }
     return pc
   }
+
+  console.log('===remoteVideoRef', remoteVideoRef.current)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gradient-to-br from-blue-100 to-indigo-200">
