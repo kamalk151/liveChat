@@ -1,12 +1,13 @@
 "use client"
 import React, { useRef, useEffect, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./ActionButton"
+import ActionButton from "./actionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
-  const localStreamRef = useRef<MediaStream | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const localStreamRef = useRef<MediaStream>(null)
+  // State to manage socket ID and peer connection
   const [socketId, setSocketId] = useState<string>("")
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
   
@@ -31,15 +32,21 @@ export default function VideoComponent() {
 
   // Setup local media
   useEffect(() => {
+    if (!adapter?.id) return
+
+    setSocketId(adapter.id)
+
     if( adapter.id ) {
       setSocketId(adapter.id)
       navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
         localStreamRef.current = stream
         console.log("Local stream set", stream)
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
+      }).catch((err) => {
+        console.error("Failed to get local media stream:", err)
       })
     }
-  }, [adapter.connected])
+  }, [adapter?.id])
 
   useEffect(() => {
     // adapter.emit('allDisconnect') // to start conversation
@@ -61,7 +68,7 @@ export default function VideoComponent() {
       await pc.setLocalDescription(offer)
       adapter.emit("offer", { to: strangeUserId, offer })
     }
-    
+
     startConversation()
   }, [idleUsers])
 
@@ -76,6 +83,7 @@ export default function VideoComponent() {
         console.error("Failed to create peer connection")
         return
       }
+
       setPeer(pc)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await pc.createAnswer()
@@ -115,25 +123,27 @@ export default function VideoComponent() {
   console.log(localStreamRef, "Creating peer connection for:", localStreamRef.current)
 
   // Create peer connection
-  function createPeerConnection(remoteId: string) {
-    // const stream = localVideoRef.current
-    if (!localStreamRef.current) {
+  const createPeerConnection = (remoteId: string) => {
+    const stream = localStreamRef.current
+    if (!stream) {
       console.error("Local stream is not available")
       return null
     }
-    // Add local stream
-    // const localStream = localVideoRef.current?.srcObject as MediaStream
-    // Use a public STUN server for NAT traversal
+
     const pc = new RTCPeerConnection({
+      // Use a public STUN server for NAT traversal
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
-    
+
     console.log(remoteId, "Creating peer connection for:", localStreamRef)
-    localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current!))
+    stream.getTracks().forEach(track => pc.addTrack(track, stream))
     // Remote stream
     pc.ontrack = e => {
-      console.log("ontrack fired", e.streams)
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0]
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = e.streams[0]
+      } else {
+        console.warn("Remote video ref or stream is missing")
+      }
     }
     // ICE candidates
     pc.onicecandidate = e => {
