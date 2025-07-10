@@ -78,6 +78,18 @@ export default function VideoComponent() {
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
+      
+      // Get stream if we don’t already have it
+      if (!localStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        localStreamRef.current = stream
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream
+        } else {
+          console.error("Local stream is not available")
+        }
+      }
+
       const pc = createPeerConnection(from)
       if (!pc) {
         console.error("Failed to create peer connection")
@@ -192,7 +204,7 @@ export default function VideoComponent() {
               ref={localVideoRef}
               autoPlay
               playsInline
-              muted
+              muted={true}
               className="w-full h-full object-cover rounded-lg"
             />
           </div>
