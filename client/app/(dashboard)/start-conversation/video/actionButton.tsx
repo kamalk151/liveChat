@@ -68,6 +68,12 @@ export default function ActionButton({
         <div className="mx-2 text-xs text-gray-400">
           <span> Your Socket ID: { socketId } </span>
         </div>
+        <input type="text"
+          className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter target user ID"
+          value={ targetId }
+          onChange={ (e) => setTargetId(e.target.value.trim()) }
+          />
         <div className="mx-2 text-xs text-gray-400">
           <span> Target Id: { targetId } </span>
         </div>

@@ -49,6 +49,31 @@ export default function VideoComponent() {
   }, [adapter?.id])
 
   useEffect(() => {
+    if (!adapter?.id) return
+
+    setSocketId(adapter.id)
+
+    if( strangeId ) {
+        const startConversation = async () => {
+        console.log("Starting call with user----1:", strangeId)
+        adapter.emit("start_conversation", { to: strangeId })
+        const pc = createPeerConnection(strangeId)
+        if (!pc) {
+          console.error("Failed to create peer connection----11")
+          return
+        }
+        setPeer(pc)
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        adapter.emit("offer", { to: strangeId, offer })
+      }
+
+      startConversation()
+    }
+  }, [strangeId])
+
+
+  useEffect(() => {
     // adapter.emit('allDisconnect') // to start conversation
     const strangeUserId = connectToStrange()
     if (!strangeUserId) return
@@ -147,7 +172,7 @@ export default function VideoComponent() {
     }
     // eslint-disable-next-line
   }, [adapter, peer, localStreamRef])
-  console.log(localStreamRef, "Creating peer connection for:", localStreamRef.current)
+  console.log(remoteVideoRef, "Creating peer connection for:", localStreamRef.current)
 
   // Create peer connection
   const createPeerConnection = (remoteId: string) => {
@@ -162,7 +187,6 @@ export default function VideoComponent() {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
 
-    console.log(remoteId, "Creating peer connection for:", localStreamRef)
     stream.getTracks().forEach(track =>{
       console.log("Adding track to peer connection:", track)
       return pc.addTrack(track, stream)
@@ -170,7 +194,7 @@ export default function VideoComponent() {
     // Remote stream
     pc.ontrack = e => {
       if (remoteVideoRef.current) {
-        console.warn(strangeId, "==", socketId, "Remote video stream", e.streams[0])
+        console.warn(remoteId, "==", socketId, "Remote video stream", e.streams[0])
         remoteVideoRef.current.srcObject = e.streams[0]
       } else {
         console.warn("Remote video ref or stream is missing")
@@ -184,8 +208,6 @@ export default function VideoComponent() {
     }
     return pc
   }
-
-  console.log('===remoteVideoRef', remoteVideoRef.current)
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gradient-to-br from-blue-100 to-indigo-200">
