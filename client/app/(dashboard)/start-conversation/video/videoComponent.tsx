@@ -9,6 +9,7 @@ export default function VideoComponent() {
   const localStreamRef = useRef<MediaStream>(null)
   // State to manage socket ID and peer connection
   const [socketId, setSocketId] = useState<string>("")
+  const [submitTarget, setSubmitTarget] = useState<boolean>(false)
   const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
   
   const {
@@ -70,7 +71,7 @@ export default function VideoComponent() {
 
       startConversation()
     }
-  }, [strangeId])
+  }, [submitTarget])
 
 
   useEffect(() => {
@@ -263,6 +264,8 @@ export default function VideoComponent() {
             setIsCalling={setIsCalling}
             startCall={startCall}
             setStartCall={setStartCall}
+            setSubmitTarget={setSubmitTarget}
+            // submitTarget={submitTarget}
           />
         </div>
       </div>

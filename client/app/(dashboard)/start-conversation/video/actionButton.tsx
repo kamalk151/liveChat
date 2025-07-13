@@ -8,12 +8,14 @@ interface ActionButtonProps {
   socketId: string
   setStartCall: (startCall: boolean) => void
   setIsCalling: (isCalling: boolean) => void
+  setSubmitTarget: (startCall: boolean) => void
   isCalling: boolean
   startCall: boolean
 }
 
 export default function ActionButton({
   setTargetId,
+  setSubmitTarget,
   targetId,
   socketId,
   setStartCall,
@@ -30,7 +32,8 @@ export default function ActionButton({
 
   const handleStartCall = () => {
     setIsCalling(true)
-    getAllIdleUsers()
+    // getAllIdleUsers()
+    setSubmitTarget(true)
   }
 
   const handleEndCall = () => {
