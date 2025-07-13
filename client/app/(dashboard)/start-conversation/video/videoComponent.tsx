@@ -78,7 +78,12 @@ export default function VideoComponent() {
     // This will create a new peer connection and set the remote description
     // Offer - The person starting the call
     adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
-      
+      console.log("Received offer from:", from, "Offer:", offer)
+      // If we already have a peer connection, ignore the offer
+      if (peer) {
+        console.warn("Ignoring offer, already have a peer connection")
+        return
+      }
       // Get stream if we don’t already have it
       if (!localStreamRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -113,19 +118,26 @@ export default function VideoComponent() {
 
     // This acknowledges the offer and responds with an answer 
     // This will set the remote description on the existing peer connection
-    adapter.on("answer", async ({ answer }: { answer: any}) => {      
-      if (peer) {
-        console.log(peer, "Received answer:", answer)
-        await peer.setRemoteDescription(new RTCSessionDescription(answer))
-      } 
-    })
+    let remoteDescriptionSet = false
+    const pendingCandidates: any = []
 
+    adapter.on("answer", async ({ answer }: { answer: any}) => {
+      if (peer) {
+        await peer.setRemoteDescription(new RTCSessionDescription(answer))
+        remoteDescriptionSet = true
+        for (const c of pendingCandidates) {
+          await peer.addIceCandidate(new RTCIceCandidate(c))
+        }
+      }
+    })
     // ICE candidate from remote
-    adapter.on("ice-candidate", async ({ candidate }: { candidate: any}) => {
-      // it's like an IP address and port) that helps two peers find
-      // the best way to connect directly to each other
-      console.log(peer, "Received ICE candidate:", candidate)
-      if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate))
+    adapter.on("ice-candidate", async ({ candidate }) => {
+      if (!peer) return
+      if (remoteDescriptionSet) {
+        await peer.addIceCandidate(new RTCIceCandidate(candidate))
+      } else {
+        pendingCandidates.push(candidate)
+      }
     })
 
     return () => {
@@ -158,7 +170,7 @@ export default function VideoComponent() {
     // Remote stream
     pc.ontrack = e => {
       if (remoteVideoRef.current) {
-        console.warn("Remote video stream", e.streams[0])
+        console.warn(strangeId, "==", socketId, "Remote video stream", e.streams[0])
         remoteVideoRef.current.srcObject = e.streams[0]
       } else {
         console.warn("Remote video ref or stream is missing")
