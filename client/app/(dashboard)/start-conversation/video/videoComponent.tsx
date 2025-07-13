@@ -1,168 +1,58 @@
 "use client"
-import React, { useRef, useEffect, useState } from "react"
+
+import React, { useEffect, useRef, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
-import ActionButton from "./ActionButton"
 
 export default function VideoComponent() {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
-  const localStreamRef = useRef<MediaStream>(null)
-  // State to manage socket ID and peer connection
-  const [socketId, setSocketId] = useState<string>("")
-  const [submitTarget, setSubmitTarget] = useState<boolean>(false)
-  const [peer, setPeer] = useState<RTCPeerConnection | null>(null)
-  
+  const peerRef = useRef<RTCPeerConnection | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
+
   const {
-    strangeId,
-    setStrangeId,
-    adapter,
-    setIsCalling,
-    setStartCall,
-    onlineUsers,
-    idleUsers,
-    isCalling,
-    startCall
+    adapter, // socket.io client instance
   } = useCreateSocketForVideo()
 
-  // connect to a random stranger
-  const connectToStrange = () => {
-    if (!idleUsers.length) return ''
-    const randomIndex = Math.floor(Math.random() * idleUsers.length)
-    return idleUsers[randomIndex]
-  }
+  const [targetId, setTargetId] = useState("")
+  const [socketId, setSocketId] = useState("")
 
-  // Setup local media
-  useEffect(() => {
-    if (!adapter?.id) return
-
-    setSocketId(adapter.id)
-
-    if( adapter.id ) {
-      setSocketId(adapter.id)
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-        localStreamRef.current = stream
-        console.log("Local stream set", stream)
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream
-      }).catch((err) => {
-        console.error("Failed to get local media stream:", err)
-      })
-    }
-  }, [adapter?.id])
-
-  useEffect(() => {
-    if (!adapter?.id) return
-
-    setSocketId(adapter.id)
-
-    if( strangeId ) {
-        const startConversation = async () => {
-        console.log("Starting call with user----1:", strangeId)
-        adapter.emit("start_conversation", { to: strangeId })
-        const pc = createPeerConnection(strangeId)
-        if (!pc) {
-          console.error("Failed to create peer connection----11")
-          return
-        }
-        setPeer(pc)
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        adapter.emit("offer", { to: strangeId, offer })
-      }
-
-      startConversation()
-    }
-  }, [submitTarget])
-
-
-  useEffect(() => {
-    // adapter.emit('allDisconnect') // to start conversation
-    const strangeUserId = connectToStrange()
-    if (!strangeUserId) return
-    console.log('updated idleUsers', strangeUserId)
-    setStrangeId(strangeUserId)
-
-    const startConversation = async () => {
-      console.log("Starting call with user:", strangeUserId)
-      adapter.emit("start_conversation", { to: strangeUserId })
-      const pc = createPeerConnection(strangeUserId)
-      if (!pc) {
-        console.error("Failed to create peer connection")
-        return
-      }
-      setPeer(pc)
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      adapter.emit("offer", { to: strangeUserId, offer })
-    }
-
-    startConversation()
-  }, [idleUsers])
-
-  // Handle signaling
   useEffect(() => {
     if (!adapter) return
-    // This will create a new peer connection and set the remote description
-    // Offer - The person starting the call
-    adapter.on("offer", async ({ from, offer }: { from: string, offer: any }) => {
-      console.log("Received offer from:", from, "Offer:", offer)
-      // If we already have a peer connection, ignore the offer
-      if (peer) {
-        console.warn("Ignoring offer, already have a peer connection")
-        return
-      }
-      // Get stream if we don’t already have it
-      if (!localStreamRef.current) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        localStreamRef.current = stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream
-        } else {
-          console.error("Local stream is not available")
-        }
-      }
+    setSocketId(adapter.id)
 
-      const pc = createPeerConnection(from)
-      if (!pc) {
-        console.error("Failed to create peer connection")
-        return
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      localStreamRef.current = stream
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream
       }
+    }).catch(console.error)
 
-      setPeer(pc)
+    // Listen for offer
+    adapter.on("offer", async ({ from, offer }) => {
+      console.log("📥 Received offer from", from)
+      const pc = createPeer(from)
+      peerRef.current = pc
+
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
-      // Answer - The person receiving the call
-      if(strangeId !== from) {
-        console.log("Setting strangeId to:", from)
-        setStrangeId(from)
-        setIsCalling(true)
-        setStartCall(true)
-      }
-      console.log("Sending answer to:", from)
+
       adapter.emit("answer", { to: from, answer })
     })
 
-    // This acknowledges the offer and responds with an answer 
-    // This will set the remote description on the existing peer connection
-    let remoteDescriptionSet = false
-    const pendingCandidates: any = []
-
-    adapter.on("answer", async ({ answer }: { answer: any}) => {
-      if (peer) {
-        await peer.setRemoteDescription(new RTCSessionDescription(answer))
-        remoteDescriptionSet = true
-        for (const c of pendingCandidates) {
-          await peer.addIceCandidate(new RTCIceCandidate(c))
-        }
+    // Listen for answer
+    adapter.on("answer", async ({ answer }) => {
+      console.log("📥 Received answer")
+      if (peerRef.current) {
+        await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer))
       }
     })
-    // ICE candidate from remote
+
+    // ICE candidates
     adapter.on("ice-candidate", async ({ candidate }) => {
-      if (!peer) return
-      if (remoteDescriptionSet) {
-        await peer.addIceCandidate(new RTCIceCandidate(candidate))
-      } else {
-        pendingCandidates.push(candidate)
+      console.log("📥 Received ICE candidate")
+      if (peerRef.current && candidate) {
+        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate))
       }
     })
 
@@ -171,104 +61,92 @@ export default function VideoComponent() {
       adapter.off("answer")
       adapter.off("ice-candidate")
     }
-    // eslint-disable-next-line
-  }, [adapter, peer, localStreamRef])
-  console.log(remoteVideoRef, "Creating peer connection for:", localStreamRef.current)
+  }, [adapter])
 
-  // Create peer connection
-  const createPeerConnection = (remoteId: string) => {
-    const stream = localStreamRef.current
-    if (!stream) {
-      console.error("Local stream is not available")
-      return null
-    }
-
+  const createPeer = (remoteId: string) => {
     const pc = new RTCPeerConnection({
-      // Use a public STUN server for NAT traversal
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
 
-    stream.getTracks().forEach(track =>{
-      console.log("Adding track to peer connection:", track)
-      return pc.addTrack(track, stream)
+    const stream = localStreamRef.current
+    if (!stream) {
+      console.error("❌ No local stream available")
+      return pc
+    }
+
+    stream.getTracks().forEach(track => {
+      pc.addTrack(track, stream)
     })
-    // Remote stream
-    pc.ontrack = e => {
-      if (remoteVideoRef.current) {
-        console.warn(remoteId, "==", socketId, "Remote video stream", e.streams[0])
-        remoteVideoRef.current.srcObject = e.streams[0]
-      } else {
-        console.warn("Remote video ref or stream is missing")
+
+    pc.ontrack = (event) => {
+      console.log("✅ ontrack fired", event.streams)
+      if (remoteVideoRef.current && !remoteVideoRef.current.srcObject) {
+        remoteVideoRef.current.srcObject = event.streams[0]
       }
     }
-    // ICE candidates
-    pc.onicecandidate = e => {
-      if (e.candidate) {
-        adapter.emit("ice-candidate", { to: remoteId, candidate: e.candidate })
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("📤 Sending ICE candidate")
+        adapter.emit("ice-candidate", { to: remoteId, candidate: event.candidate })
       }
     }
+
+    pc.onconnectionstatechange = () => {
+      console.log("🔗 Connection state:", pc.connectionState)
+    }
+
     return pc
   }
 
+  const startCall = async () => {
+    if (!adapter || !targetId || !localStreamRef.current) {
+      alert("Missing target ID or local stream not ready")
+      return
+    }
+
+    const pc = createPeer(targetId)
+    peerRef.current = pc
+
+    const offer = await pc.createOffer()
+    await pc.setLocalDescription(offer)
+    adapter.emit("offer", { to: targetId, offer })
+    console.log("📤 Sent offer to", targetId)
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] bg-gradient-to-br from-blue-100 to-indigo-200">
-      <h1 className="text-3xl font-bold mb-6 text-indigo-800">Live Video Conversation</h1>
-      <div className="relative w-full max-w-xl bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
-        {/* Remote (other user) video - big */}
-        <div className="w-full aspect-video bg-gray-200 rounded-lg border-2 border-green-400 flex items-center justify-center overflow-hidden">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-            style={{ background: "#e5e7eb" }}
-          />
-          {/* My (local) video - small, draggable */}
-          <div
-            className="absolute top-4 right-4 cursor-move shadow-lg rounded-lg border-2 border-indigo-400 bg-gray-300"
-            style={{
-              width: "120px",
-              height: "90px",
-              zIndex: 10,
-              overflow: "hidden",
-              resize: "both"
-            }}
-            id="local-video-draggable"
-          >
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted={true}
-              className="w-full h-full object-cover rounded-lg"
-            />
-          </div>
+    <div className="p-6 max-w-xl mx-auto bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold mb-4">🎥 WebRTC Video Chat</h2>
+
+      <div className="mb-4">
+        <label className="block mb-2 text-sm font-medium">Target Socket ID:</label>
+        <input
+          type="text"
+          value={targetId}
+          onChange={(e) => setTargetId(e.target.value)}
+          placeholder="Enter socket ID to call"
+          className="w-full border px-3 py-2 rounded-md"
+        />
+        <button
+          onClick={startCall}
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+        >
+          Start Call
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-sm font-medium mb-1">📍 Local Video</p>
+          <video ref={localVideoRef} autoPlay muted playsInline className="w-full bg-black rounded" />
         </div>
-        {/* User stats and controls */}
-        { onlineUsers.length > 0 && (
-          <div className="text-sm text-gray-600 mt-4">
-            <span> Online Users: </span>
-            <span className="font-semibold"> {onlineUsers.length} </span>
-          </div>
-        ) }
-        <div className="text-sm text-gray-600">
-          <span>Idle Users: </span>
-          <span className="font-semibold">{idleUsers.length}</span>
-        </div>
-        <div className="flex gap-4 mt-4">
-          <ActionButton
-            setTargetId={setStrangeId}
-            targetId={strangeId}
-            socketId={socketId}
-            isCalling={isCalling}
-            setIsCalling={setIsCalling}
-            startCall={startCall}
-            setStartCall={setStartCall}
-            setSubmitTarget={setSubmitTarget}
-            // submitTarget={submitTarget}
-          />
+        <div>
+          <p className="text-sm font-medium mb-1">📡 Remote Video</p>
+          <video ref={remoteVideoRef} autoPlay playsInline className="w-full bg-black rounded" />
         </div>
       </div>
+
+      <div className="mt-4 text-sm text-gray-500">Your socket ID: <span className="font-mono">{socketId}</span></div>
     </div>
   )
 }
