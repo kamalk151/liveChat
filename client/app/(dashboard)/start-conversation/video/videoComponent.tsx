@@ -11,15 +11,56 @@ export default function VideoComponent() {
 
   const {
     adapter, // socket.io client instance
+    idleUsers,
+    setStrangeId,
+    strangeId,
+    isCalling,
+    setIsCalling,
+    setStartCall,
+    startCall
   } = useCreateSocketForVideo()
 
   const [targetId, setTargetId] = useState("")
-  const [socketId, setSocketId] = useState("")
+  const [socketId, setSocketId] = useState<any>("")
+  const [endCall, setEndCall] = useState<any>(false)
+  // connect to a random stranger
+  const connectToStrange = () => {
+    if (!idleUsers.length) return ''
+    const randomIndex = Math.floor(Math.random() * idleUsers.length)
+    return idleUsers[randomIndex]
+  }
+
+  const startCallWithStrange = async (strangeId: string) => {
+    const pc = createPeer(strangeId)
+    peerRef.current = pc
+    const offer = await pc.createOffer()
+    await pc.setLocalDescription(offer)
+    adapter.emit("offer", { to: strangeId, offer })
+    console.log("📤 Sent offer to", strangeId)
+    console.log("Target ID set to:", strangeId)
+    setStartCall(true)
+    setIsCalling(false)
+    console.log("Starting call with strange ID:", strangeId)
+  }
+
+  useEffect(() => {
+    const getRandomStrangId = connectToStrange()
+    if (idleUsers.length && getRandomStrangId && !targetId) {  
+      setStrangeId(getRandomStrangId)
+      setTargetId(getRandomStrangId)
+      console.log("Set StrangeId ID:",getRandomStrangId)
+    }
+
+    if(targetId && !endCall) {
+      startCallWithStrange(targetId)
+    }
+
+  }, [idleUsers, targetId])
 
   useEffect(() => {
     if (!adapter) return
-    setSocketId(adapter.id)
-
+    setSocketId(adapter?.id)
+    // adapter.emit('allDisconnect') // to start conversation
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       localStreamRef.current = stream
       if (localVideoRef.current) {
@@ -70,7 +111,7 @@ export default function VideoComponent() {
 
     const stream = localStreamRef.current
     if (!stream) {
-      console.error("❌ No local stream available")
+      console.warn("❌ No local stream available")
       return pc
     }
 
@@ -99,19 +140,55 @@ export default function VideoComponent() {
     return pc
   }
 
-  const startCall = async () => {
-    if (!adapter || !targetId || !localStreamRef.current) {
-      alert("Missing target ID or local stream not ready")
-      return
+  const startCallHandler = async () => {
+    // !targetId ||
+    if (!adapter || !localStreamRef.current) {
+      console.log(`Missing target ID or local stream not ready ${adapter.id} ${localStreamRef.current}`)
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        localStreamRef.current = stream
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream
+        }
+      }).catch(console.error)
     }
 
-    const pc = createPeer(targetId)
-    peerRef.current = pc
+    adapter.emit('get_idle_users') // to start conversation
+    setIsCalling(true)
+    setEndCall(false)
+  }
 
-    const offer = await pc.createOffer()
-    await pc.setLocalDescription(offer)
-    adapter.emit("offer", { to: targetId, offer })
-    console.log("📤 Sent offer to", targetId)
+  const endCallHandler = () => {
+    adapter.emit('release_users', { to: targetId, type: 'endCall' })
+    setEndCall(true)
+    if (peerRef.current) {
+      peerRef.current.close()
+      peerRef.current = null
+    }
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        track.stop()
+      })
+      localStreamRef.current = null
+    }
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null
+    }
+
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null
+    }
+
+    if (adapter && targetId) {
+      adapter.emit('release_users', { to: targetId, type: 'endCall' })
+    }
+
+    setIsCalling(false)
+    setStartCall(false)
+    setTargetId('')
+    setStrangeId('')
+    console.log("🛑 Call ended and cleaned up")
   }
 
   return (
@@ -127,14 +204,59 @@ export default function VideoComponent() {
           placeholder="Enter socket ID to call"
           className="w-full border px-3 py-2 rounded-md"
         />
-        <button
-          onClick={startCall}
+        { startCall && (
+          <button
+            onClick={() => {
+              endCallHandler()
+            }}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            End Call
+          </button>
+        )}
+
+        {!startCall && (
+          <button
+          onClick={startCallHandler}
           className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
         >
           Start Call
         </button>
-      </div>
+        )}
 
+        
+      </div>
+      {
+        isCalling && !targetId && (
+          <div className="text-green-600 mb-4">
+            <p>📞 finding a person for you </p>
+          </div>
+        )
+      }
+      
+      {
+        targetId && !startCall && (
+          <div className="text-blue-600 mb-4">
+            <p>🔗 Found a person & Calling: {targetId}</p>
+          </div>
+        )
+      }
+
+      {
+        startCall && (
+          <div className="text-green-600 mb-4">
+            <p>📞 Call in progress with {targetId}</p>
+          </div>
+        )
+      }
+
+      {
+        !startCall && isCalling && (
+          <div className="text-red-600 mb-4">
+            <p>❌ Call ended</p>
+          </div>
+        )
+      }
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm font-medium mb-1">📍 Local Video</p>
