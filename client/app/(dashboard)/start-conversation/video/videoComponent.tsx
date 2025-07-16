@@ -46,10 +46,11 @@ export default function VideoComponent() {
   useEffect(() => {
     const getRandomStrangId = connectToStrange()
     if (idleUsers.length && getRandomStrangId && !targetId) {  
-      setStrangeId(getRandomStrangId)
-      setTargetId(getRandomStrangId)
-      console.log("Set StrangeId ID:",getRandomStrangId)
+      setStrangeId('FJBe7QwZBh_REGjvAAGz')
+      setTargetId('FJBe7QwZBh_REGjvAAGz')
+      console.log("Set StrangeId ID:", getRandomStrangId)
     }
+    console.log(targetId, "set targetId====", endCall)
 
     if(targetId && !endCall) {
       startCallWithStrange(targetId)
@@ -83,9 +84,19 @@ export default function VideoComponent() {
 
     // Listen for answer
     adapter.on("answer", async ({ answer }) => {
-      console.log("📥 Received answer")
+      console.log("📥 Received answer", targetId)
       if (peerRef.current) {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer))
+        // 🔄 Manually assign stream if available
+        const remoteStream = new MediaStream()
+        peerRef.current.getReceivers().forEach(receiver => {
+          if (receiver.track) {
+            remoteStream.addTrack(receiver.track)
+          }
+        })
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream
+        }
       }
     })
 
@@ -101,6 +112,7 @@ export default function VideoComponent() {
       adapter.off("offer")
       adapter.off("answer")
       adapter.off("ice-candidate")
+      adapter.off("release_users")
     }
   }, [adapter])
 
@@ -152,13 +164,17 @@ export default function VideoComponent() {
       }).catch(console.error)
     }
 
-    adapter.emit('get_idle_users') // to start conversation
+    setTimeout( async () => {
+      adapter.emit('get_idle_users') // to start conversation
+      console.log("Requesting idle users")
+    }, 1000)
     setIsCalling(true)
     setEndCall(false)
   }
 
   const endCallHandler = () => {
     adapter.emit('release_users', { to: targetId, type: 'endCall' })
+    // Ensure any previous peer is completely reset
     setEndCall(true)
     if (peerRef.current) {
       peerRef.current.close()
@@ -178,10 +194,6 @@ export default function VideoComponent() {
 
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null
-    }
-
-    if (adapter && targetId) {
-      adapter.emit('release_users', { to: targetId, type: 'endCall' })
     }
 
     setIsCalling(false)
