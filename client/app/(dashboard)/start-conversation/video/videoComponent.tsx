@@ -46,8 +46,8 @@ export default function VideoComponent() {
   useEffect(() => {
     const getRandomStrangId = connectToStrange()
     if (idleUsers.length && getRandomStrangId && !targetId) {  
-      setStrangeId('FJBe7QwZBh_REGjvAAGz')
-      setTargetId('FJBe7QwZBh_REGjvAAGz')
+      setStrangeId('WfS7ZACQVMyT9BvVAAIV')
+      setTargetId('WfS7ZACQVMyT9BvVAAIV')
       console.log("Set StrangeId ID:", getRandomStrangId)
     }
     console.log(targetId, "set targetId====", endCall)
@@ -163,7 +163,8 @@ export default function VideoComponent() {
         }
       }).catch(console.error)
     }
-
+    //Intimate to peer that call is starting
+    adapter.emit('start_conversation', { to: targetId })
     setTimeout( async () => {
       adapter.emit('get_idle_users') // to start conversation
       console.log("Requesting idle users")

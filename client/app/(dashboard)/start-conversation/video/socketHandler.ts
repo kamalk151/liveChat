@@ -37,7 +37,7 @@ export const useCreateSocketForVideo = () => {
   const handleEndCall = () => {
     setIsCalling(false) // Reset the call state
     setStartCall(false) // Reset the start call state
-    setStrangeId("") // Reset the strange user ID
+    // setStrangeId("") // Reset the strange user ID
     console.log("Call ended, states reset")
   }
 
