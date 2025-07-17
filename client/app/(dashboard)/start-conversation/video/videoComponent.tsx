@@ -114,7 +114,7 @@ export default function VideoComponent() {
       adapter.off("ice-candidate")
       adapter.off("release_users")
     }
-  }, [adapter])
+  }, [adapter?.connected])
 
   const createPeer = (remoteId: string) => {
     const pc = new RTCPeerConnection({
@@ -147,6 +147,16 @@ export default function VideoComponent() {
 
     pc.onconnectionstatechange = () => {
       console.log("🔗 Connection state:", pc.connectionState)
+      if(pc.connectionState === 'connected') {
+        setStartCall(true) 
+        console.log("Connected to peer:", remoteId)
+      }
+      if(pc.connectionState === 'disconnected') {
+        setStartCall(false)
+        setEndCall(true)
+        setIsCalling(false)
+        console.log("Connected to peer:", remoteId)
+      }
     }
 
     return pc
@@ -217,6 +227,7 @@ export default function VideoComponent() {
           placeholder="Enter socket ID to call"
           className="w-full border px-3 py-2 rounded-md"
         />
+        { startCall } s
         { startCall && (
           <button
             onClick={() => {
