@@ -30,6 +30,37 @@ export default function VideoComponent() {
     return idleUsers[randomIndex]
   }
 
+  const endCallHandler = () => {
+    adapter.emit('release_users', { to: targetId, type: 'endCall' })
+    // Ensure any previous peer is completely reset
+    setEndCall(true)
+    if (peerRef.current) {
+      peerRef.current.close()
+      peerRef.current = null
+    }
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        track.stop()
+      })
+      localStreamRef.current = null
+    }
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null
+    }
+
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null
+    }
+
+    setIsCalling(false)
+    setStartCall(false)
+    setTargetId('')
+    setStrangeId('')
+    console.log("🛑 Call ended and cleaned up")
+  }
+
   const startCallWithStrange = async (strangeId: string) => {
     const pc = createPeer(strangeId)
     peerRef.current = pc
@@ -46,8 +77,8 @@ export default function VideoComponent() {
   useEffect(() => {
     const getRandomStrangId = connectToStrange()
     if (idleUsers.length && getRandomStrangId && !targetId) {  
-      setStrangeId('WfS7ZACQVMyT9BvVAAIV')
-      setTargetId('WfS7ZACQVMyT9BvVAAIV')
+      setStrangeId(getRandomStrangId)
+      setTargetId(getRandomStrangId)
       console.log("Set StrangeId ID:", getRandomStrangId)
     }
     console.log(targetId, "set targetId====", endCall)
@@ -72,6 +103,7 @@ export default function VideoComponent() {
     // Listen for offer
     adapter.on("offer", async ({ from, offer }) => {
       console.log("📥 Received offer from", from)
+      if(!targetId) setTargetId(from)
       const pc = createPeer(from)
       peerRef.current = pc
 
@@ -147,15 +179,14 @@ export default function VideoComponent() {
 
     pc.onconnectionstatechange = () => {
       console.log("🔗 Connection state:", pc.connectionState)
-      if(pc.connectionState === 'connected') {
+      if (pc.connectionState === 'connected') {
         setStartCall(true) 
         console.log("Connected to peer:", remoteId)
       }
-      if(pc.connectionState === 'disconnected') {
-        setStartCall(false)
-        setEndCall(true)
-        setIsCalling(false)
-        console.log("Connected to peer:", remoteId)
+
+      if (pc.connectionState === 'disconnected') {
+        endCallHandler()
+        console.log("close connection to peer:", remoteId)
       }
     }
 
@@ -181,37 +212,6 @@ export default function VideoComponent() {
     }, 1000)
     setIsCalling(true)
     setEndCall(false)
-  }
-
-  const endCallHandler = () => {
-    adapter.emit('release_users', { to: targetId, type: 'endCall' })
-    // Ensure any previous peer is completely reset
-    setEndCall(true)
-    if (peerRef.current) {
-      peerRef.current.close()
-      peerRef.current = null
-    }
-
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        track.stop()
-      })
-      localStreamRef.current = null
-    }
-
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null
-    }
-
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null
-    }
-
-    setIsCalling(false)
-    setStartCall(false)
-    setTargetId('')
-    setStrangeId('')
-    console.log("🛑 Call ended and cleaned up")
   }
 
   return (
