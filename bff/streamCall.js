@@ -12,17 +12,17 @@ module.exports = (io) => {
       videoUsers.set(socket.id, 'busy')
       videoUsers.set(to, 'busy')
       console.log('call started', socket.id, 'to', to)
-      socket.emit('conversation_started')
+      // socket.emit('conversation_started')
     })
 
     socket.on('release_users', ({ to, type }) => {
       videoUsers.set(to, 'idle')
       videoUsers.set(socket.id, 'idle')
       socket.emit('get_idle_users')
-      if (type === 'endCall') {
-        console.log(socket.id, '===Ending call for==to', to)
-        streamConversation.to(to).emit('handle_end_call')
-      }
+      // if (type === 'endCall') {
+      //   console.log(socket.id, '===Ending call for==to', to)
+      //   streamConversation.to(to).emit('handle_end_call')
+      // }
       // Optionally notify the other user
     })
 
