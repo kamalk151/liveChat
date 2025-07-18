@@ -222,12 +222,12 @@ export default function VideoComponent() {
     }
     //Intimate to peer that call is starting
     adapter.emit('start_conversation', { to: targetId })
-    setTimeout( async () => {
+    setIsCalling(true)
+    setEndCall(false)
+     setTimeout( () => {
       adapter.emit('get_idle_users') // to start conversation
       console.log("Requesting idle users")
     }, 1000)
-    setIsCalling(true)
-    setEndCall(false)
   }
 
   return (
