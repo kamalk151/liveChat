@@ -30,6 +30,27 @@ export default function VideoComponent() {
     return idleUsers[randomIndex]
   }
 
+  const ensureLocalStream = async () => {
+    let stream = localStreamRef.current;
+
+    if (!stream) {
+      console.warn("❌ No local stream available. Getting new media...");
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error("Failed to get user media:", err);
+        // return null;
+      }
+    }
+
+    return stream;
+  }
+  
   const endCallHandler = () => {
     adapter.emit('release_users', { to: targetId, type: 'endCall' })
     // Ensure any previous peer is completely reset
@@ -62,7 +83,7 @@ export default function VideoComponent() {
   }
 
   const startCallWithStrange = async (strangeId: string) => {
-    const pc = createPeer(strangeId)
+    const pc = await createPeer(strangeId)
     peerRef.current = pc
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
@@ -93,18 +114,19 @@ export default function VideoComponent() {
     if (!adapter) return
     setSocketId(adapter?.id)
     // adapter.emit('allDisconnect') // to start conversation
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      localStreamRef.current = stream
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
-    }).catch(console.error)
+    ensureLocalStream()
+    // navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+    //   localStreamRef.current = stream
+    //   if (localVideoRef.current) {
+    //     localVideoRef.current.srcObject = stream
+    //   }
+    // }).catch(console.error)
 
     // Listen for offer
     adapter.on("offer", async ({ from, offer }) => {
       console.log("📥 Received offer from", from)
       if(!targetId) setTargetId(from)
-      const pc = createPeer(from)
+      const pc = await createPeer(from)
       peerRef.current = pc
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
@@ -148,14 +170,13 @@ export default function VideoComponent() {
     }
   }, [adapter?.connected])
 
-  const createPeer = (remoteId: string) => {
+  const createPeer = async (remoteId: string) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
 
-    const stream = localStreamRef.current
+    const stream = await ensureLocalStream()
     if (!stream) {
-      console.warn("❌ No local stream available")
       return pc
     }
 
@@ -197,12 +218,7 @@ export default function VideoComponent() {
     // !targetId ||
     if (!adapter || !localStreamRef.current) {
       console.log(`Missing target ID or local stream not ready ${adapter.id} ${localStreamRef.current}`)
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-        localStreamRef.current = stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream
-        }
-      }).catch(console.error)
+      await ensureLocalStream()
     }
     //Intimate to peer that call is starting
     adapter.emit('start_conversation', { to: targetId })
