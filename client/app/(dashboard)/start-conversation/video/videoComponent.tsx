@@ -138,13 +138,14 @@ export default function VideoComponent() {
 
     // Listen for answer
     adapter.on("answer", async ({ answer }) => {
-      console.log("📥 Received answer", targetId)
       if (peerRef.current) {
+        console.log("📥 Received answer", targetId)
         await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer))
         // 🔄 Manually assign stream if available
         const remoteStream = new MediaStream()
         peerRef.current.getReceivers().forEach(receiver => {
           if (receiver.track) {
+            console.log("📥 Received answer track")
             remoteStream.addTrack(receiver.track)
           }
         })
@@ -156,8 +157,8 @@ export default function VideoComponent() {
 
     // ICE candidates
     adapter.on("ice-candidate", async ({ candidate }) => {
-      console.log("📥 Received ICE candidate")
       if (peerRef.current && candidate) {
+        console.log("📥 Received ICE candidate")
         await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate))
       }
     })
@@ -166,7 +167,6 @@ export default function VideoComponent() {
       adapter.off("offer")
       adapter.off("answer")
       adapter.off("ice-candidate")
-      adapter.off("release_users")
     }
   }, [adapter?.connected])
 
@@ -185,8 +185,8 @@ export default function VideoComponent() {
     })
 
     pc.ontrack = (event) => {
-      console.log("✅ ontrack fired", event.streams)
       if (remoteVideoRef.current && !remoteVideoRef.current.srcObject) {
+        console.log("✅ ontrack fired", event.streams)
         remoteVideoRef.current.srcObject = event.streams[0]
       }
     }
