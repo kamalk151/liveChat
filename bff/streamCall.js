@@ -19,10 +19,9 @@ module.exports = (io) => {
       videoUsers.set(to, 'idle')
       videoUsers.set(socket.id, 'idle')
       socket.emit('get_idle_users')
-      // if (type === 'endCall') {
-      //   console.log(socket.id, '===Ending call for==to', to)
-      //   streamConversation.to(to).emit('handle_end_call')
-      // }
+      if (type === 'endCall') {
+        streamConversation.to(to).emit('handle_end_call')
+      }
       // Optionally notify the other user
     })
 

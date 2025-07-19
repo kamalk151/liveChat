@@ -30,25 +30,23 @@ export default function VideoComponent() {
     return idleUsers[randomIndex]
   }
 
-  const ensureLocalStream = async () => {
+  const ensureLocalStreamReady = async () => {
     let stream = localStreamRef.current;
 
     if (!stream) {
-      console.warn("❌ No local stream available. Getting new media...");
+      console.warn("❌ No local stream available. Getting new media...")
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localStreamRef.current = stream;
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        localStreamRef.current = stream
 
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.srcObject = stream
         }
       } catch (err) {
-        console.error("Failed to get user media:", err);
-        // return null;
+        console.error("Failed to get user media:", err)
       }
     }
-
-    return stream;
+    return stream
   }
   
   const endCallHandler = () => {
@@ -59,17 +57,6 @@ export default function VideoComponent() {
       peerRef.current.close()
       peerRef.current = null
     }
-
-    // if (localStreamRef.current) {
-    //   localStreamRef.current.getTracks().forEach(track => {
-    //     track.stop()
-    //   })
-    //   localStreamRef.current = null
-    // }
-
-    // if (localVideoRef.current) {
-    //   localVideoRef.current.srcObject = null
-    // }
 
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null
@@ -102,7 +89,6 @@ export default function VideoComponent() {
       setTargetId(getRandomStrangId)
       console.log("Set StrangeId ID:", getRandomStrangId)
     }
-    console.log(targetId, "set targetId====", endCall)
 
     if(targetId && !endCall) {
       startCallWithStrange(targetId)
@@ -111,17 +97,10 @@ export default function VideoComponent() {
   }, [idleUsers, targetId])
 
   useEffect(() => {
-    if (!adapter) return
+    if (!adapter?.id) return
     setSocketId(adapter?.id)
     // adapter.emit('allDisconnect') // to start conversation
-    ensureLocalStream()
-    // navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-    //   localStreamRef.current = stream
-    //   if (localVideoRef.current) {
-    //     localVideoRef.current.srcObject = stream
-    //   }
-    // }).catch(console.error)
-
+    ensureLocalStreamReady()
     // Listen for offer
     adapter.on("offer", async ({ from, offer }) => {
       console.log("📥 Received offer from", from)
@@ -157,7 +136,9 @@ export default function VideoComponent() {
 
     // ICE candidates
     adapter.on("ice-candidate", async ({ candidate }) => {
-      if (peerRef.current && candidate) {
+      if (!peerRef.current || !candidate) return
+
+      if (peerRef.current.remoteDescription && peerRef.current.remoteDescription.type) {
         console.log("📥 Received ICE candidate")
         await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate))
       }
@@ -170,12 +151,22 @@ export default function VideoComponent() {
     }
   }, [adapter?.connected])
 
+  /**
+   * Creates a new RTCPeerConnection and sets up event handlers.
+   * @param remoteId The socket ID of the remote peer to connect to.
+   * This function initializes the peer connection, adds local media tracks,
+   * sets up event handlers for track and ICE candidate events,
+   * and returns the peer connection instance.
+   * 
+   * @param remoteId 
+   * @returns 
+   */
   const createPeer = async (remoteId: string) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     })
 
-    const stream = await ensureLocalStream()
+    const stream = await ensureLocalStreamReady()
     if (!stream) {
       return pc
     }
@@ -186,14 +177,12 @@ export default function VideoComponent() {
 
     pc.ontrack = (event) => {
       if (remoteVideoRef.current && !remoteVideoRef.current.srcObject) {
-        console.log("✅ ontrack fired", event.streams)
         remoteVideoRef.current.srcObject = event.streams[0]
       }
     }
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log("📤 Sending ICE candidate")
         adapter.emit("ice-candidate", { to: remoteId, candidate: event.candidate })
       }
     }
@@ -201,24 +190,34 @@ export default function VideoComponent() {
     pc.onconnectionstatechange = () => {
       console.log("🔗 Connection state:", pc.connectionState)
       if (pc.connectionState === 'connected') {
-        setStartCall(true) 
-        console.log("Connected to peer:", remoteId)
+        setStartCall(true)
       }
-
       if (pc.connectionState === 'disconnected') {
         endCallHandler()
-        console.log("close connection to peer:", remoteId)
       }
     }
-
+    pc.oniceconnectionstatechange = () => {
+      console.log("🔗 ICE connection state:", pc.iceConnectionState)
+    }
+    /** why do we need this
+     * This event is triggered when the local peer needs to create an offer
+     * to initiate a call or when renegotiation is required.
+     */
+    pc.onnegotiationneeded = async () => {
+      console.log("🔄 Negotiation needed")
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      adapter.emit("offer", { to: remoteId, offer })
+    }
+    pc.onicegatheringstatechange = () => {
+      console.log("🔄 ICE gathering state:", pc.iceGatheringState)
+    }
     return pc
   }
 
   const startCallHandler = async () => {
-    // !targetId ||
     if (!adapter || !localStreamRef.current) {
-      console.log(`Missing target ID or local stream not ready ${adapter.id} ${localStreamRef.current}`)
-      await ensureLocalStream()
+      await ensureLocalStreamReady()
     }
     //Intimate to peer that call is starting
     adapter.emit('start_conversation', { to: targetId })
@@ -226,12 +225,24 @@ export default function VideoComponent() {
     setEndCall(false)
      setTimeout( () => {
       adapter.emit('get_idle_users') // to start conversation
-      console.log("Requesting idle users")
     }, 1000)
   }
 
+  if (!socketId) {
+    return (
+      <div className="p-6 max-w-xl mx-auto bg-white rounded-lg shadow-lg">
+        <p className="text-sm text-gray-500 ">
+          <span className="">
+            Kindly reload the page, something went wrong!
+          </span>
+          <span className="cursor-pointer hover:underline" onClick={() => window.location.reload()}> Click here to reload.</span>
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-6 max-w-xl mx-auto bg-white rounded-lg shadow-lg">
+    <div className="p-6 max-w-xl mx-auto bg-white">
       <h2 className="text-2xl font-semibold mb-4">🎥 WebRTC Video Chat</h2>
 
       <div className="mb-4">
@@ -243,7 +254,7 @@ export default function VideoComponent() {
           placeholder="Enter socket ID to call"
           className="w-full border px-3 py-2 rounded-md"
         />
-        { startCall } s
+        { startCall }
         { startCall && (
           <button
             onClick={() => {
@@ -297,6 +308,8 @@ export default function VideoComponent() {
           </div>
         )
       }
+
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm font-medium mb-1">📍 Local Video</p>
