@@ -10,6 +10,7 @@ export const useCreateSocketForVideo = () => {
   const [isCalling, setIsCalling] = useState(false)
   const [startCall, setStartCall] = useState<boolean>(false)
   const [strangeId, setStrangeId] = useState<string>('')
+  const [endCall, setEndCall] = useState<any>(false)
 
   const adapter = useMemo(() => {
     if (!socket) {
@@ -80,6 +81,8 @@ export const useCreateSocketForVideo = () => {
     setStartCall,
     idleUsers,
     getAllIdleUsers,
-    onlineUsers
+    onlineUsers,
+    endCall,
+    setEndCall
   }
 }

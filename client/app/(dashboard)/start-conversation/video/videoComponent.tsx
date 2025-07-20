@@ -17,12 +17,14 @@ export default function VideoComponent() {
     isCalling,
     setIsCalling,
     setStartCall,
-    startCall
+    startCall,
+    endCall,
+    setEndCall
   } = useCreateSocketForVideo()
 
   const [targetId, setTargetId] = useState("")
   const [socketId, setSocketId] = useState<any>("")
-  const [endCall, setEndCall] = useState<any>(false)
+  
   // connect to a random stranger
   const connectToStrange = () => {
     if (!idleUsers.length) return ''
@@ -52,7 +54,7 @@ export default function VideoComponent() {
   const endCallHandler = () => {
     adapter.emit('release_users', { to: targetId, type: 'endCall' })
     // Ensure any previous peer is completely reset
-    setEndCall(true)
+    
     if (peerRef.current) {
       peerRef.current.close()
       peerRef.current = null
@@ -62,6 +64,7 @@ export default function VideoComponent() {
       remoteVideoRef.current.srcObject = null
     }
 
+    setEndCall(true)
     setIsCalling(false)
     setStartCall(false)
     setTargetId('')
@@ -196,19 +199,11 @@ export default function VideoComponent() {
         endCallHandler()
       }
     }
+    
     pc.oniceconnectionstatechange = () => {
       console.log("🔗 ICE connection state:", pc.iceConnectionState)
     }
-    /** why do we need this
-     * This event is triggered when the local peer needs to create an offer
-     * to initiate a call or when renegotiation is required.
-     */
-    pc.onnegotiationneeded = async () => {
-      console.log("🔄 Negotiation needed")
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      adapter.emit("offer", { to: remoteId, offer })
-    }
+
     pc.onicegatheringstatechange = () => {
       console.log("🔄 ICE gathering state:", pc.iceGatheringState)
     }
@@ -222,6 +217,7 @@ export default function VideoComponent() {
     //Intimate to peer that call is starting
     adapter.emit('start_conversation', { to: targetId })
     setIsCalling(true)
+    setStartCall(true)
     setEndCall(false)
      setTimeout( () => {
       adapter.emit('get_idle_users') // to start conversation
@@ -244,7 +240,6 @@ export default function VideoComponent() {
   return (
     <div className="p-6 max-w-xl mx-auto bg-white">
       <h2 className="text-2xl font-semibold mb-4">🎥 WebRTC Video Chat</h2>
-
       <div className="mb-4">
         <label className="block mb-2 text-sm font-medium">Target Socket ID:</label>
         <input
@@ -254,8 +249,7 @@ export default function VideoComponent() {
           placeholder="Enter socket ID to call"
           className="w-full border px-3 py-2 rounded-md"
         />
-        { startCall }
-        { startCall && (
+        { startCall ? (
           <button
             onClick={() => {
               endCallHandler()
@@ -264,27 +258,16 @@ export default function VideoComponent() {
           >
             End Call
           </button>
-        )}
-
-        {!startCall && (
+        ) : (
           <button
-          onClick={startCallHandler}
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Start Call
-        </button>
-        )}
-
-        
+            onClick={startCallHandler}
+            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Start Call
+          </button>
+        ) }
       </div>
-      {
-        isCalling && !targetId && (
-          <div className="text-green-600 mb-4">
-            <p>📞 finding a person for you </p>
-          </div>
-        )
-      }
-      
+
       {
         targetId && !startCall && (
           <div className="text-blue-600 mb-4">
@@ -309,7 +292,6 @@ export default function VideoComponent() {
         )
       }
 
-      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm font-medium mb-1">📍 Local Video</p>
@@ -321,7 +303,7 @@ export default function VideoComponent() {
         </div>
       </div>
 
-      <div className="mt-4 text-sm text-gray-500">Your socket ID: <span className="font-mono">{socketId}</span></div>
+      <div className="mt-4 text-sm text-gray-500">Your socket ID: <span className="font-mono">{ socketId }</span></div>
     </div>
   )
 }
