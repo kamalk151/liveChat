@@ -32,6 +32,62 @@ export default function VideoComponent() {
     return idleUsers[randomIndex]
   }
 
+  /**
+   * Creates a new RTCPeerConnection and sets up event handlers.
+   * @param remoteId The socket ID of the remote peer to connect to.
+   * This function initializes the peer connection, adds local media tracks,
+   * sets up event handlers for track and ICE candidate events,
+   * and returns the peer connection instance.
+   * 
+   * @param remoteId 
+   * @returns 
+   */
+  const createPeer = async (remoteId: string) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    })
+
+    const stream = await ensureLocalStreamReady()
+    if (!stream) {
+      return pc
+    }
+
+    stream.getTracks().forEach(track => {
+      pc.addTrack(track, stream)
+    })
+
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current && !remoteVideoRef.current.srcObject) {
+        remoteVideoRef.current.srcObject = event.streams[0]
+      }
+    }
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        adapter.emit("iceCandidateToTargetUser", { to: remoteId, candidate: event.candidate })
+      }
+    }
+
+    pc.onconnectionstatechange = () => {
+      console.log("🔗 Connection state:", pc.connectionState)
+      if (pc.connectionState === 'connected') {
+        setStartCall(true)
+      }
+      if (pc.connectionState === 'disconnected') {
+        endCallHandler()
+      }
+    }
+    
+    pc.oniceconnectionstatechange = () => {
+      console.log("🔗 ICE connection state:", pc.iceConnectionState)
+    }
+
+    pc.onicegatheringstatechange = () => {
+      console.log("🔄 ICE gathering state:", pc.iceGatheringState)
+    }
+    return pc
+  }
+
   const ensureLocalStreamReady = async () => {
     let stream = localStreamRef.current;
 
@@ -77,7 +133,7 @@ export default function VideoComponent() {
     peerRef.current = pc
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
-    adapter.emit("offer", { to: strangeId, offer })
+    adapter.emit("requestToTargetUser", { to: strangeId, offer })
     console.log("📤 Sent offer to", strangeId)
     console.log("Target ID set to:", strangeId)
     setStartCall(true)
@@ -86,15 +142,20 @@ export default function VideoComponent() {
   }
 
   useEffect(() => {
+    if (!isCalling) return
     const getRandomStrangId = connectToStrange()
-    if (idleUsers.length && getRandomStrangId && !targetId) {  
+    if ( idleUsers.length && getRandomStrangId && !targetId ) {
       setStrangeId(getRandomStrangId)
       setTargetId(getRandomStrangId)
       console.log("Set StrangeId ID:", getRandomStrangId)
     }
 
-    if(targetId && !endCall) {
-      startCallWithStrange(targetId)
+    if( targetId && !endCall ) {
+      setTimeout(() => {
+        console.log("start_conversation----", targetId)
+        // adapter.emit('start_conversation', { to: targetId })
+        startCallWithStrange(targetId)
+      }, 1000)
     }
 
   }, [idleUsers, targetId])
@@ -107,7 +168,7 @@ export default function VideoComponent() {
     // Listen for offer
     adapter.on("offer", async ({ from, offer }) => {
       console.log("📥 Received offer from", from)
-      if(!targetId) setTargetId(from)
+      if (!targetId) setTargetId(from)
       const pc = await createPeer(from)
       peerRef.current = pc
 
@@ -115,7 +176,7 @@ export default function VideoComponent() {
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
-      adapter.emit("answer", { to: from, answer })
+      adapter.emit("answerToTargetUser", { to: from, answer })
     })
 
     // Listen for answer
@@ -154,74 +215,17 @@ export default function VideoComponent() {
     }
   }, [adapter?.connected])
 
-  /**
-   * Creates a new RTCPeerConnection and sets up event handlers.
-   * @param remoteId The socket ID of the remote peer to connect to.
-   * This function initializes the peer connection, adds local media tracks,
-   * sets up event handlers for track and ICE candidate events,
-   * and returns the peer connection instance.
-   * 
-   * @param remoteId 
-   * @returns 
-   */
-  const createPeer = async (remoteId: string) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-    })
-
-    const stream = await ensureLocalStreamReady()
-    if (!stream) {
-      return pc
-    }
-
-    stream.getTracks().forEach(track => {
-      pc.addTrack(track, stream)
-    })
-
-    pc.ontrack = (event) => {
-      if (remoteVideoRef.current && !remoteVideoRef.current.srcObject) {
-        remoteVideoRef.current.srcObject = event.streams[0]
-      }
-    }
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        adapter.emit("ice-candidate", { to: remoteId, candidate: event.candidate })
-      }
-    }
-
-    pc.onconnectionstatechange = () => {
-      console.log("🔗 Connection state:", pc.connectionState)
-      if (pc.connectionState === 'connected') {
-        setStartCall(true)
-      }
-      if (pc.connectionState === 'disconnected') {
-        endCallHandler()
-      }
-    }
-    
-    pc.oniceconnectionstatechange = () => {
-      console.log("🔗 ICE connection state:", pc.iceConnectionState)
-    }
-
-    pc.onicegatheringstatechange = () => {
-      console.log("🔄 ICE gathering state:", pc.iceGatheringState)
-    }
-    return pc
-  }
-
   const startCallHandler = async () => {
     if (!adapter || !localStreamRef.current) {
       await ensureLocalStreamReady()
     }
-    //Intimate to peer that call is starting
-    adapter.emit('start_conversation', { to: targetId })
-    setIsCalling(true)
-    setStartCall(true)
-    setEndCall(false)
-     setTimeout( () => {
+    setTimeout( () => {
       adapter.emit('get_idle_users') // to start conversation
-    }, 1000)
+    }, 500)
+
+    // Intimate to peer that call is starting
+    setIsCalling(true)
+    setEndCall(false)
   }
 
   if (!socketId) {
@@ -238,72 +242,86 @@ export default function VideoComponent() {
   }
 
   return (
-    <div className="p-6 max-w-xl mx-auto bg-white">
-      <h2 className="text-2xl font-semibold mb-4">🎥 WebRTC Video Chat</h2>
-      <div className="mb-4">
-        <label className="block mb-2 text-sm font-medium">Target Socket ID:</label>
+    <div className="relative min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex items-center justify-center p-6">
+    <div className="w-full max-w-5xl bg-white shadow-xl rounded-lg overflow-hidden p-6">
+    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">🎥Talk Freely. See Clearly. — Free Video Chat for Everyone.</h2>
+
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-6 space-y-4 md:space-y-0" title={socketId}>
+      <div className="flex-1 hidden">
+        <label className="block mb-1 text-sm font-medium text-gray-700">🎯 Target Socket ID:</label>
         <input
           type="text"
           value={targetId}
           onChange={(e) => setTargetId(e.target.value)}
           placeholder="Enter socket ID to call"
-          className="w-full border px-3 py-2 rounded-md"
+          className="w-full border border-gray-300 px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        { startCall ? (
+      </div>
+
+      <div className="md:ml-4">
+        {startCall ? (
           <button
-            onClick={() => {
-              endCallHandler()
-            }}
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={endCallHandler}
+            className="px-6 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 transition"
           >
-            End Call
+            ❌ End Call
           </button>
         ) : (
           <button
             onClick={startCallHandler}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition"
           >
-            Start Call
+            📞 Start Call
           </button>
-        ) }
+        )}
       </div>
-
-      {
-        targetId && !startCall && (
-          <div className="text-blue-600 mb-4">
-            <p>🔗 Found a person & Calling: {targetId}</p>
-          </div>
-        )
-      }
-
-      {
-        startCall && (
-          <div className="text-green-600 mb-4">
-            <p>📞 Call in progress with {targetId}</p>
-          </div>
-        )
-      }
-
-      {
-        !startCall && isCalling && (
-          <div className="text-red-600 mb-4">
-            <p>❌ Call ended</p>
-          </div>
-        )
-      }
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm font-medium mb-1">📍 Local Video</p>
-          <video ref={localVideoRef} autoPlay muted playsInline className="w-full bg-black rounded" />
-        </div>
-        <div>
-          <p className="text-sm font-medium mb-1">📡 Remote Video</p>
-          <video ref={remoteVideoRef} autoPlay playsInline className="w-full bg-black rounded" />
-        </div>
-      </div>
-
-      <div className="mt-4 text-sm text-gray-500">Your socket ID: <span className="font-mono">{ socketId }</span></div>
     </div>
+
+    { isCalling && !startCall && !targetId && (
+      <div className="text-green-600 text-center mb-4 font-medium">
+        <span> ✅ Call is connecting... </span>
+      </div>
+    )}
+    {targetId && !startCall && (
+      <div className="text-blue-700 text-center mb-4 font-medium">
+        🔗 Found a person. Calling: <span className="font-mono">{targetId}</span>
+      </div>
+    )}
+
+    {startCall && (
+      <div className="text-green-600 text-center mb-4 font-medium">
+        ✅ Call in progress with <span className="font-mono">{targetId}</span>
+      </div>
+    )}
+
+    {/* Video Section */}
+    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
+      {/* Remote video */}
+      <video
+        ref={remoteVideoRef}
+        autoPlay
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover rounded-lg"
+      />
+
+      {/* Local video (resizable via corner) */}
+      <div className="absolute top-4 right-4 resize overflow-hidden border-2 border-white rounded shadow-lg bg-black w-40 h-28 min-w-[120px] min-h-[90px]">
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      </div>
+    </div>
+
+    {/* Socket Info */}
+    <div className="mt-4 text-sm text-gray-500 text-center">
+      Your socket ID: <span className="font-mono">{socketId}</span>
+    </div>
+  </div>
+  </div>
+
   )
 }

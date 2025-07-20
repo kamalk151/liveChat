@@ -8,8 +8,8 @@ module.exports = (io) => {
     console.log('A video user connected:', socket.id)  
 
     // Relay signaling messages
-    socket.on('start_conversation', ({ to }) => {
-      videoUsers.set(socket.id, 'busy')
+    socket.on('start_conversation', ({ to, from }) => {
+      videoUsers.set(from, 'busy')
       videoUsers.set(to, 'busy')
       console.log('call started', socket.id, 'to', to)
       // socket.emit('conversation_started')
@@ -42,17 +42,23 @@ module.exports = (io) => {
     })
   
     // Relay offer to the target user
-    socket.on('offer', ({ to, offer }) => {
-      streamConversation.to(to).emit('offer', { from: socket.id, offer })
+    socket.on('requestToTargetUser', ({ to, offer }) => {
+      console.log('offer to:', socket.id, 'to:', to, 'answer:')
+      const onlineUserList = Array.from(videoUsers.entries())
+      const idleUser = onlineUserList.filter(([id, status]) => status === 'idle' && id === to)
+      let targetSocket = idleUser.length ? to : onlineUserList[0][0]
+      socket.emit('start_conversation', { from: socket.id, targetSocket })
+      streamConversation.to(targetSocket).emit('offer', { from: socket.id, offer })
     })
 
     // Relay answer to the target user
-    socket.on('answer', ({ to, answer }) => {
+    socket.on('answerToTargetUser', ({ to, answer }) => {
+      console.log('Answer received from:', socket.id, 'to:', to, 'answer:', answer)
       streamConversation.to(to).emit('answer', { from: socket.id, answer })
     })
 
     // Relay ICE candidate to the target user
-    socket.on('ice-candidate', ({ to, candidate }) => {
+    socket.on('iceCandidateToTargetUser', ({ to, candidate }) => {
       streamConversation.to(to).emit('ice-candidate', { from: socket.id, candidate })
     })
 
