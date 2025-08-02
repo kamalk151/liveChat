@@ -1,11 +1,14 @@
-// import LoginForm from "./(auth)/login/LoginForm"
+import HomePage from "./index"
 
-// export default function Landing() {
-//   return <LoginForm />
-// }
+export const metadata = {
+  title: "PalHola - Talk to strangers",
+  // description: "Welcome to the Digital Store, your one-stop shop for all things digital.",
+  // keywords: "digital store, online shopping, digital products, e-commerce",
+}
 
-import { redirect } from "next/navigation"
-
-export default function Landing() {
-  redirect("/login")
+export default function Page() {
+ 
+  return (
+    <HomePage />
+  )
 }

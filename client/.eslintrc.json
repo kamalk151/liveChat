@@ -1,0 +1,12 @@
+{
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript",
+    "plugin:react/jsx-runtime"
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off",
+    "react/react-in-jsx-scope": "off"
+        
+  }
+}

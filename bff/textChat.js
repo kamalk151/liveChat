@@ -11,16 +11,16 @@ module.exports = (io) => {
     users.set(socket.id, 'idle')
     console.log('A user connected:', socket.id)  
     // Relay signaling messages
-    socket.on('start_conversation', ({ to, roomId, data }) => {
+    socket.on('start_conversation', ({ to, roomId }) => {
       users.set(socket.id, 'busy')
       users.set(to, 'busy') 
-      chat.to(to).emit('conversation_started', { from: socket.id, roomId, data, to })
+      chat.to(to).emit('conversation_started', { from: socket.id, roomId, to })
     })
 
     socket.on('message', ({ to, roomId, data }) => {
       console.log(roomId, `Message from ${socket.id} to ${to}:`, data)
       console.log('list user', users)
-      chat.to(to).emit('get_message_response', { from: socket.id, data, roomId })
+      chat.to(to).emit('get_message_response', { from: socket.id, ...data, roomId })
     })
 
     socket.on('release_users', ({ to }) => {

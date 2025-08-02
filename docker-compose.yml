@@ -1,0 +1,16 @@
+# helps to run multi-container Docker applications
+version: "3.9"
+services:
+  bff:
+    build: ./bff
+    ports:
+      - "3080:3080"
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production

@@ -1,0 +1,20 @@
+{
+   "scripts": {
+      "start": "npm run dev",
+      "dev": "concurrently -c \"green,blue\" \"npm run dev:mfe\" \"npm run dev:bff\"",
+      "dev:mfe": "cd client && npm run dev",
+      "dev:bff": "cd bff && npm run dev",
+      "lint": "eslint . --ext .ts,.tsx",
+      "lint:fix": "eslint . --ext .ts,.tsx --fix"
+   },
+   "author": "",
+   "license": "ISC",
+   "devDependencies": {
+      "@eslint/js": "^9.32.0",
+      "concurrently": "^9.2.0",
+      "eslint": "^9.32.0",
+      "eslint-plugin-react": "^7.37.5",
+      "globals": "^16.3.0",
+      "typescript-eslint": "^8.38.0"
+   }
+}
