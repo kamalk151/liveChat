@@ -1,5 +1,4 @@
 "use client"
-import React from "react"
 import { Message, RenderMessageProps } from "./interface"
 import { useCreateSocketConnection } from "./socketHandler"
 

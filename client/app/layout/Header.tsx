@@ -19,7 +19,7 @@ function Header() {
                 28,432 Online Now
               </p>
             </li>
-            <li><Link href="/account"  className="hover:underline">Account</Link></li>
+            <li><Link href="/login"  className="hover:underline">Account</Link></li>
             <li><Link href="/feedback" className="hover:underline">Feedback</Link></li>
           </ul>
         </nav>

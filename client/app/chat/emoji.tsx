@@ -1,5 +1,5 @@
 "use client"
-import React, { forwardRef } from "react"
+import { forwardRef } from "react"
 import EmojiPicker, { Categories, SuggestionMode } from 'emoji-picker-react'
 import type { EmojiClickData } from 'emoji-picker-react'
 import { Message, EmojiProps } from "./interface"

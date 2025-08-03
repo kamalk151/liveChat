@@ -1,6 +1,5 @@
 "use client"
-
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useCreateSocketForVideo } from "./socketHandler"
 
 export default function VideoComponent() {

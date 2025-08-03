@@ -1,4 +1,5 @@
 
+import Link from "next/link"
 export default function NotFoundPage() {
   return (
     <div className="text-center mt-12 bg-white">
@@ -11,9 +12,9 @@ export default function NotFoundPage() {
         Oops! The page you are looking for does not exist.
       </h2>
       <p className="mt-4">
-        <a href="/" className="text-blue-600 underline">
+        <Link href="/" className="text-blue-600 underline">
           Go back to Home
-        </a>
+        </Link>
       </p>
     </div>
   )

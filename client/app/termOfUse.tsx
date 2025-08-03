@@ -1,5 +1,3 @@
-import React from "react"
-
 export default function TermOfUse() {  
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8 my-10 text-gray-800" style={{ boxShadow: '1px 5px 5px 5px #ddd' }}>
